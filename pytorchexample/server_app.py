@@ -3,13 +3,19 @@
 import torch
 from flwr.app import ArrayRecord, ConfigRecord, Context, MetricRecord
 from flwr.serverapp import Grid, ServerApp
-from flwr.serverapp.strategy import FedAvg
+#from flwr.serverapp.strategy import FedAvg
+from pytorchexample.custom_strategy import CustomStrategy
 
 from pytorchexample.task import Net, load_centralized_dataset, test
 
 # Create ServerApp
 app = ServerApp()
 
+#Hardcoded two edge servers and which clients belong to each edge server
+EDGE_GROUPS = {
+    0: [0, 1, 2],
+    1: [3, 4, 5],
+}
 
 @app.main()
 def main(grid: Grid, context: Context) -> None:
@@ -24,8 +30,17 @@ def main(grid: Grid, context: Context) -> None:
     global_model = Net()
     arrays = ArrayRecord(global_model.state_dict())
 
-    # Initialize FedAvg strategy
-    strategy = FedAvg(fraction_evaluate=fraction_evaluate)
+    #Initialize strategy
+    strategy = CustomStrategy(
+    edge_groups=EDGE_GROUPS,
+    fraction_evaluate=fraction_evaluate,
+    )
+    
+    #strategy = FedAvg(
+        #fraction_train=0.5,#fraction of nodes to involve in a round of training
+    #    fraction_evaluate=fraction_evaluate,
+        #min_available_nodes=100, #minimum connected nodes required before FL starts
+    #    )
 
     # Start strategy, run FedAvg for `num_rounds`
     result = strategy.start(
