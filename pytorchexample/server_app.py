@@ -73,7 +73,7 @@ def global_evaluate(server_round: int, arrays: ArrayRecord) -> MetricRecord:
     test_loss, test_acc = test(model, test_dataloader, device)
 
     #Should print results correctly
-    print(f"Round {server_round} - Accuracy: {test_acc}, Loss: {test_loss}")
+    #print(f"Round {server_round} - Accuracy: {test_acc}, Loss: {test_loss}")
 
     # Return the evaluation metrics
     return MetricRecord({"accuracy": test_acc, "loss": test_loss})

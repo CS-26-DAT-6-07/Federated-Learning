@@ -37,11 +37,15 @@ def train(msg: Message, context: Context):
         device,
     )
 
+    feature_vector = extracting_clients_feature_vector(model, trainloader, device, partition_id)
+
     # Construct and return reply Message
     model_record = ArrayRecord(model.state_dict())
     metrics = {
         "train_loss": train_loss,
         "num-examples": len(trainloader.dataset),
+        "feature_vector": feature_vector,
+        "partition_id": partition_id,
     }
     metric_record = MetricRecord(metrics)
     content = RecordDict({"arrays": model_record, "metrics": metric_record})
@@ -80,3 +84,30 @@ def evaluate(msg: Message, context: Context):
     metric_record = MetricRecord(metrics)
     content = RecordDict({"metrics": metric_record})
     return Message(content=content, reply_to=msg)
+
+def extracting_clients_feature_vector(model, trainloader, device, partition_id):
+    model.eval()
+    features = []
+
+    def hook(module, input, output):
+        #print(f"\nClient {partition_id} activation shape:", output.shape)
+        #print(f"Client {partition_id} activations:", output)
+        features.append(output.detach().cpu())
+
+    hook_handle = model.fc2.register_forward_hook(hook)
+
+    with torch.no_grad():
+        for batch in trainloader:
+            images = batch["image"].to(device)
+            model(images)
+
+    hook_handle.remove()
+
+    features = torch.cat(features, dim=0)   #shape: [num_images, 84]
+    client_vector = features.mean(dim=0)    #shape: [84]
+
+    print(f"Client {partition_id} final hidden layer averaged feature vector shape:", client_vector.shape)
+    print(f"Client {partition_id} final hidden layer averaged feature vector:", client_vector)
+    
+
+    return client_vector.tolist()
